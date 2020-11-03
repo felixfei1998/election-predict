@@ -16,7 +16,7 @@ library(tidyverse); library(knitr); library(scales)
 
 # Abstract
 
-On Tuesday, November 3, 2020, the 2020 United States Presidential election will be held. The outcome is of interest to the world. We analyzed individual-level survey data and poststratified census data to predict the probability of Trump winning the election. We used a logistic regression model with poststratification to predict this outcome for different combinations of different demographic variables. Finally, we combined all information and predicted the probability to be 39%. We failed to calculate a margin of error around this prediction due to inadequate data and did not achieve great prediction accuracy with our model. Next steps include collecting required data to calculate the margin of error and more variables to increase prediction accuracy. Nonetheless, the results are of great use to those interested.
+We used a logistic regression model with poststratification to predict this outcome for different combinations of different demographic variables. We predicted the probability to be 39%. Next steps include collecting required data to calculate the margin of error and more variables to increase prediction accuracy. The results are of great use to those interested.
 
 Keywords: America, 2020 United States Presidential election, Donald Trump, popular vote
 
@@ -24,13 +24,15 @@ Keywords: America, 2020 United States Presidential election, Donald Trump, popul
 
 # Introduction
 
-The aim of this analysis is to estimate the probability of presidential candidate getting the majority of votes for the 2020 American presidential election using statistical technique: multivariable regression with post-stratification. The outcome variable we were particularly interested in was whether a vote would vote for Donald Trump, which was a binary outcome. First, we fit a multivariable logistic regression model to fit our outcome variable using a few demographic demographic characteristics. Next, we poststratified the selected sample with the variables in the logistic regression model. We then assigned sampled units into different cells based on combinations of the variables. We used the logistic regression model to predict the probability of giving the vote to Donald Trump for each cell. Ultimately, we combined the estimated probabilities of all cells to compute the probability of Donald Trump getting the popular vote. 
+On Tuesday, November 3, 2020, the 2020 United States Presidential election will be held. The outcome is of interest to the world. We analyzed individual-level survey data and poststratified census data to predict the probability of Trump winning the election. The 2020 presidential election is scheduled to occur simultaneously with elections to the Senate and the House of Representatives. Also, Gubernatorial and legislative elections will take place in several states. After the election, the United States House will reassign the seats among the 50 states using the results of the 2020 United States Census. Most of the time a party that wins the presidential election experiences a tornado effect that also helps other candidates of the smae party win elections. Thus, the party that wins the presidential election could win a significant advantage in getting new Congressional and state legislative districts that will remain in effect until the 2032 elections.
+
+The aim of this analysis is to estimate the probability of presidential candidate getting the majority of votes for the 2020 American presidential election using statistical technique: multivariable regression with post-stratification. The outcome variable we were particularly interested in was whether a vote would vote for Donald Trump, which was a binary outcome. First, we fit a multivariable logistic regression model to fit our outcome variable using a few demographic demographic characteristics. Next, we poststratified the selected sample with the variables in the logistic regression model. We then assigned sampled units into different cells based on combinations of the variables. We used the logistic regression model to predict the probability of giving the vote to Donald Trump for each cell. Ultimately, we combined the estimated probabilities of all cells to compute the probability of Donald Trump getting the popular vote.
+
+The estimated probability of Trump winning from our poststratification model is 39%. We roughly estimated the margin of error but should be taken lightly since a naive estimation was conducted. The generalizability of our results are limited due to low prediction power. Next steps will be gathering more data to estimate the margin of error and more variables to increase prediction power. We could possibly pool data from multiple surveys for estimation to decrease bias and obtain more accuracy in the estimates of the desired probability.
 
 \newpage
 
 # Data
-
-We used poststratification data from the census dataset American Community Surveys (ACS) from 2018. The American Community Survey (ACS) is a demographics survey program produced by the the United States Census Bureau. It constantly collects data previously included only in the long form of the decennial census, such as ancestry, citizenship, educational attainment, income, language proficiency, migration, disability, employment, and housing characteristics. We also used individual level data from the wave 50 Democracy Fund UCLA Nationscape dataset collected and compiled by UCLA Democracy Fund.Nationscape conducts weekly surveys. The first wave went out on July 18, 2019. Each survey was in the field one week. Interviews were conducted online and the respondenst had access to a computer connected to the Internet.
 
 ```{r}
 # import the clean survey Data
@@ -38,9 +40,6 @@ survey_data <- read_csv("survey_data.csv")
 # import the clean census Data
 census_data <- read_csv("census_data.csv")
 census_data <- census_data %>% filter(race != "Mix")
-```
-
-```{r}
 # data manipulation
 survey_data$sex <- survey_data$gender
 survey_data <- survey_data %>% mutate(
@@ -62,9 +61,11 @@ survey_data <- survey_data %>% mutate(
   race_ethnicity=="American Indian or Alaska Native"~"Native")) %>% drop_na()
 ```
 
-\newpage
+**Survey dataset**
 
-# Exploratory data analysis
+We also used individual level data from the wave 50 Democracy Fund UCLA Nationscape dataset collected and compiled by UCLA Democracy Fund.Nationscape conducts weekly surveys. The first wave went out on July 18, 2019. Each survey was in the field one week. The target population is American residents in 50 states. The methodology of sampling for this dataset is stratified sampling with inverse weighting. The frame were online surveys as interviews were conducted online and the respondents had access to a computer connected to the Internet. The biggest strength of this dataset is its complexity and variety of variables collected. The weaknesses is non-response bias. Non-response bias was corrected. Standard two-phase sampling weights can be developed to eliminate non-response bias.
+
+**Survey dataset: exploratory data analysis**
 
 We see from Figure \@ref(fig:fig2) that less than 40% of the sample would vote for Trump.
 
@@ -109,6 +110,53 @@ survey_data %>% mutate(vote_trump1 = ifelse(vote_trump == 1, "Yes", "No")) %>%
 
 \newpage
 
+**Post-stratification dataset**
+
+We used poststratification data from the census dataset American Community Surveys (ACS) from 2018. The source of the data is IPUMS USA. IPUMS USA collects, preserves and harmonizes U.S. census microdata and provides easy access to this data with enhanced documentation. Data includes decennial censuses from 1790 to 2010 and American Community Surveys (ACS) from 2000 to the present. The American Community Survey (ACS) is a demographics survey program produced by the the United States Census Bureau. It constantly collects data previously included only in the long form of the decennial census, such as ancestry, citizenship, educational attainment, income, language proficiency, migration, disability, employment, and housing characteristics. The target population is American residents in 50 states. The methodology for data colleciton is stratified sampling with inverse weighting probability. Non-response bias was corrected. Standard two-phase sampling weights can be developed to eliminate non-response bias. The most outstanding strength of this dataset is its clarity and completeness of variables collected.
+
+**Post-stratification dataset: exploratory data analysis**
+
+We see from Figure \@ref(fig:fig5) that the distribution of age is even.
+
+```{r fig5, fig.cap="Distribution of Age"}
+# box plot of age in 2018 ACS
+census_data %>% ggplot(aes(x="", y=age)) + geom_boxplot() + theme_bw() + 
+  labs(title = "Age distribution", x="", caption="Data source: 2018 1-year ACS")
+```
+
+We see from Figure \@ref(fig:fig6) that the distribution of sex is even.
+
+```{r fig6, fig.cap="Proportion of Sex"}
+# bar plot of sex in 2018 ACS
+census_data %>% ggplot(aes(x=sex))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="Sex distribution", caption="Data source: 2018 1-year ACS")
+```
+
+We see from Figure \@ref(fig:fig7) that the distribution of state is not super even. Some states are more populated than others.
+
+```{r fig7, fig.cap="Proportion of State"}
+# bar plot of state in 2018 ACS
+census_data %>% ggplot(aes(x=state))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="State distribution", caption="Data source: 2018 1-year ACS") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+We see from Figure \@ref(fig:fig8) that the distribution of race is fairly even. As expected, there are more whites than other ethnic groups in America.
+
+```{r fig8, fig.cap="Proportion of Race"}
+# bar plot of race in 2018 ACS
+census_data %>% ggplot(aes(x=race))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="Race distribution", caption="Data source: 2018 1-year ACS") 
+```
+
+\newpage
+
 # Model
 
 We used a logistic regression model with the response variable being vote for Donald Trump or not. The logistic regression model models the probability of a particular class or event happening such as pass/fail, win/lose, alive/dead or healthy/sick. In our case, it was voting for Trump/ not voting for Trump. The regression coefficients could be interpreted as log odds ratios and the actual statistic being modeled is the log of the odds of voting for Trump. The covariates we included in the model were age, sex, state and race. 
@@ -123,9 +171,13 @@ The ROC curve for the logistic regression model is shown in Figure \@ref(fig:fig
 
 ```{r figure1, fig.cap="ROC curve of the logistic regression model"}
 library(pROC)
+# build logistic regression model
 logit_mod <- glm(vote_trump~age+sex+state+race,data=survey_data,family="binomial")
+# calculate estimated probabilities from model
 est <- predict(logit_mod, type=c("response")); survey_data$est <- est
+# calculate ROC and AUC
 roc_auc <- roc(vote_trump~est,data=survey_data)
+# plot ROC and AUC
 ggroc(roc_auc, legacy.axes=TRUE) + labs(title="Receiver Operator Curve (ROC)",
                                         subtitle="Area Under the Curve: 0.69") + 
   theme_minimal()
@@ -142,6 +194,7 @@ result <- census_data %>%
   mutate(alp_predict_prop = estimate*n) %>%
   summarise(alp_predict = sum(alp_predict_prop)/sum(n))
 final <- data.frame(`Estimated Probability` = result$alp_predict)
+# display results
 kable(final, caption="Estimated Probability of Trump getting a Vote", digits=3)
 ```
 
@@ -153,7 +206,9 @@ We used the survey data with individual data from UCLA's Democracy Fund's Nation
 
 **Weaknesses**
 
-There are two major weaknesses revolving around our analysis. The first one being our model has limited prediction ability; it only makes the correct prediction about 70% of the time. This is due to several reasons including not having enough variables, not having random effect terms (random intercepts or random slopes), and not having interactions amongst variables. The second major weakness is that we were unable to produce a margin of error and the associated confidence interval to quantify the uncertainty around our probability estimate. We were unable to do so because appropriate techniques have not been validated and that we would need more individual level, more granular data to compute it.     
+There are two major weaknesses revolving around our analysis. The first one being our model has limited prediction ability; it only makes the correct prediction about 70% of the time. This is due to several reasons including not having enough variables, not having random effect terms (random intercepts or random slopes), and not having interactions amongst variables. The second major weakness is that we were unable to produce a margin of error and the associated confidence interval to quantify the uncertainty around our probability estimate. We were unable to do so because appropriate techniques have not been validated and that we would need more individual level, more granular data to compute it.
+
+The generalizability of our results is limited for the following reasons: 1) we only used two survey datasets and these datasets were designed specifically for different reasons, 2) we the prediction ability of our model is limited and 3) multilevel modeling is probably more appropriate here. The major limitation of logistic Regression is the assumption of linearity between the outcome variable and the independent variables. In such cases, non-linearity as found in our analysis will limit generalizability.
 
 **Next steps**
 
@@ -161,5 +216,14 @@ We could try to model state as a random effect variable and use a multilevel mod
 
 \newpage
 
+# Dataset citations
+
+Press, C., Finance, Y., &amp; Newsweek. (2020, October 30). New: Second Nationscape Data Set Release. Retrieved November 03, 2020, from https://www.voterstudygroup.org/publication/nationscape-data-set
+
+Team, M. (n.d.). U.S. CENSUS DATA FOR SOCIAL, ECONOMIC, AND HEALTH RESEARCH. Retrieved November 03, 2020, from https://usa.ipums.org/usa/index.shtml
+
 # References
+
+
+
 
