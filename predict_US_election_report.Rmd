@@ -1,0 +1,165 @@
+---
+title: "Will Trump the 2020 Presidential Election? Prediciting the Chance of Donald Trump Winning using a Poststratification Prediction Model"
+author: "Yuyu Fei, Biqi Jiang, Jiayi Yang, Yuwen Wu"
+date: "Nov 2, 2020"
+output:
+  pdf_document: default
+  bookdown::pdf_document2: default
+bibliography: references.bib
+nocite: '@*'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse); library(knitr); library(scales)
+```
+
+# Abstract
+
+On Tuesday, November 3, 2020, the 2020 United States Presidential election will be held. The outcome is of interest to the world. We analyzed individual-level survey data and poststratified census data to predict the probability of Trump winning the election. We used a logistic regression model with poststratification to predict this outcome for different combinations of different demographic variables. Finally, we combined all information and predicted the probability to be 39%. We failed to calculate a margin of error around this prediction due to inadequate data and did not achieve great prediction accuracy with our model. Next steps include collecting required data to calculate the margin of error and more variables to increase prediction accuracy. Nonetheless, the results are of great use to those interested.
+
+Keywords: America, 2020 United States Presidential election, Donald Trump, popular vote
+
+\newpage
+
+# Introduction
+
+The aim of this analysis is to estimate the probability of presidential candidate getting the majority of votes for the 2020 American presidential election using statistical technique: multivariable regression with post-stratification. The outcome variable we were particularly interested in was whether a vote would vote for Donald Trump, which was a binary outcome. First, we fit a multivariable logistic regression model to fit our outcome variable using a few demographic demographic characteristics. Next, we poststratified the selected sample with the variables in the logistic regression model. We then assigned sampled units into different cells based on combinations of the variables. We used the logistic regression model to predict the probability of giving the vote to Donald Trump for each cell. Ultimately, we combined the estimated probabilities of all cells to compute the probability of Donald Trump getting the popular vote. 
+
+\newpage
+
+# Data
+
+We used poststratification data from the census dataset American Community Surveys (ACS) from 2018. The American Community Survey (ACS) is a demographics survey program produced by the the United States Census Bureau. It constantly collects data previously included only in the long form of the decennial census, such as ancestry, citizenship, educational attainment, income, language proficiency, migration, disability, employment, and housing characteristics. We also used individual level data from the wave 50 Democracy Fund UCLA Nationscape dataset collected and compiled by UCLA Democracy Fund.Nationscape conducts weekly surveys. The first wave went out on July 18, 2019. Each survey was in the field one week. Interviews were conducted online and the respondenst had access to a computer connected to the Internet.
+
+```{r}
+# import the clean survey Data
+survey_data <- read_csv("survey_data.csv")
+# import the clean census Data
+census_data <- read_csv("census_data.csv")
+census_data <- census_data %>% filter(race != "Mix")
+```
+
+```{r}
+# data manipulation
+survey_data$sex <- survey_data$gender
+survey_data <- survey_data %>% mutate(
+  race = case_when( 
+  race_ethnicity=="White"~"White",
+  race_ethnicity=="Black, or African American"~"Black",
+  race_ethnicity=="Asian (Asian Indian)"~"Asian",
+  race_ethnicity=="Asian (Vietnamese)"~"Asian",
+  race_ethnicity=="Asian (Chinese)"~"Asian", 
+  race_ethnicity=="Asian (Korean)"~"Asian", 
+  race_ethnicity=="Asian (Japanese)"~"Asian", 
+  race_ethnicity=="Some other race"~"Other", 
+  race_ethnicity=="Asian (Filipino)"~"Asian",
+  race_ethnicity=="Asian (Other)"~"Asian", 
+  race_ethnicity=="Pacific Islander (Native Hawaiian)"~"Pacific", 
+  race_ethnicity=="Pacific Islander (Samoan)"~"Pacific", 
+  race_ethnicity=="Pacific Islander (Other)"~"Pacific", 
+  race_ethnicity=="Pacific Islander (Guamanian)"~"Pacific", 
+  race_ethnicity=="American Indian or Alaska Native"~"Native")) %>% drop_na()
+```
+
+\newpage
+
+# Exploratory data analysis
+
+We see from Figure \@ref(fig:fig2) that less than 40% of the sample would vote for Trump.
+
+```{r fig1, fig.cap="Proportion of sampled individuals in the survey data who would vote for Donald Trump"}
+# bar graph showing the proportion of sample voting for Trump in survey data
+survey_data %>% mutate(vote_trump1 = ifelse(vote_trump == 1, "Yes", "No")) %>% 
+                         ggplot(aes(x=vote_trump1))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="Vote for Donald Trump")
+```
+
+We see from Figure \@ref(fig:fig3) men are more likely to vote for Trump than women.
+
+```{r fig2, fig.cap="Proportion of sampled individuals in the survey data who would vote for Donald Trump by Sex"}
+# bar graph showing the proportion of sample voting for Trump by sex in survey data
+survey_data %>% mutate(vote_trump1 = ifelse(vote_trump == 1, "Yes", "No")) %>% 
+                         ggplot(aes(x=vote_trump1))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="Vote for Donald Trump", subtitle = "By sex")  + facet_wrap(~sex)
+```
+
+We see from Figure \@ref(fig:fig3) that minorities are less likely to vote for Trump, especially Black people.
+
+```{r fig3, fig.cap="Proportion of sampled individuals in the survey data who would vote for Donald Trump by Race"}
+# bar graph showing the proportion of sample voting for Trump by race in survey data
+survey_data %>% mutate(vote_trump1 = ifelse(vote_trump == 1, "Yes", "No")) %>% 
+                         ggplot(aes(x=vote_trump1))+
+  geom_bar(aes(y = (..count..)/sum(..count..)), width=0.7, fill="steelblue", col="black")+
+  theme_classic() + scale_y_continuous(labels = percent) + 
+  labs(y="", x="", title="Vote for Donald Trump", subtitle = "By race")  + facet_wrap(~race)
+```
+
+We see from Figure \@ref(fig:fig4) that younger people are less likely to vote for Trump.
+
+```{r fig4, fig.cap="Proportion of sampled individuals in the survey data who would vote for Donald Trump by age"}
+survey_data %>% mutate(vote_trump1 = ifelse(vote_trump == 1, "Yes", "No")) %>% 
+  ggplot(aes(x=vote_trump1, y=age)) + geom_boxplot() + theme_bw() + 
+  labs(title = "Age distribution vs. Vote for Trump or Not", xlab="")
+```
+
+\newpage
+
+# Model
+
+We used a logistic regression model with the response variable being vote for Donald Trump or not. The logistic regression model models the probability of a particular class or event happening such as pass/fail, win/lose, alive/dead or healthy/sick. In our case, it was voting for Trump/ not voting for Trump. The regression coefficients could be interpreted as log odds ratios and the actual statistic being modeled is the log of the odds of voting for Trump. The covariates we included in the model were age, sex, state and race. 
+
+First, we fit a multilevel logistic regression model to our survay dataset to estimate how likely a voter is to vote for Donald Trump based their demographic characteristics and the state where they live. The major advantage of using multivariable models for estimating state-level opinion is that it allows us to incorporate extra information beyond the polling sample dataset into our analysis. Things like past election results, income statistics, crime rates, and any number of other state-level data can help us get reliable estimates of the opinion to vote for Trump, given a meaningful relationship between those data and opinion.Next, we conducted post-stratification, where we used the logistic regression model we built to predict the probability of voting for Trump each variable combination. We post-stratified the survey sample and the population. In summary, the logistic regression allowed us to estimate trustworthy relationships between opinion and demographic and geographic variables of a survey sample, and poststratification corrects for differences that exist etween the survey sample and the target population.
+
+\newpage
+
+# Results
+
+The ROC curve for the logistic regression model is shown in Figure \@ref(fig:figure1) The AUC is 0.69 indicating sufficiently good model prediction power. 
+
+```{r figure1, fig.cap="ROC curve of the logistic regression model"}
+library(pROC)
+logit_mod <- glm(vote_trump~age+sex+state+race,data=survey_data,family="binomial")
+est <- predict(logit_mod, type=c("response")); survey_data$est <- est
+roc_auc <- roc(vote_trump~est,data=survey_data)
+ggroc(roc_auc, legacy.axes=TRUE) + labs(title="Receiver Operator Curve (ROC)",
+                                        subtitle="Area Under the Curve: 0.69") + 
+  theme_minimal()
+```
+
+The point estimate of the probability of Donald Trump winning the election, the margin of error around it, and the 95% confidence interval around it, calculated from the poststratification conducted are presented in Table \@ref(tab:table) below.
+
+```{r table}
+# post-stratification calculation
+census_data$estimate <-
+  logit_mod %>%
+  predict(newdata = census_data, type="response")
+result <- census_data %>%
+  mutate(alp_predict_prop = estimate*n) %>%
+  summarise(alp_predict = sum(alp_predict_prop)/sum(n))
+final <- data.frame(`Estimated Probability` = result$alp_predict)
+kable(final, caption="Estimated Probability of Trump getting a Vote", digits=3)
+```
+
+\newpage
+
+# Discussion
+
+We used the survey data with individual data from UCLA's Democracy Fund's Nationscape wave 50 survey and poststratification data from the 2018 1-year American Community Surveys (ACS) to estimate the probability of Donald Trump winning the American 2020 Presidential Election. We used a multivarible logistic regression model with demographic variables age, sex, and race and geographic variable state as covariates. We then produced a final estimate from the model through poststratification to correct for differences between the sample and the target populaton. We estimated he probability of Trump winning the election to be 39%.
+
+**Weaknesses**
+
+There are two major weaknesses revolving around our analysis. The first one being our model has limited prediction ability; it only makes the correct prediction about 70% of the time. This is due to several reasons including not having enough variables, not having random effect terms (random intercepts or random slopes), and not having interactions amongst variables. The second major weakness is that we were unable to produce a margin of error and the associated confidence interval to quantify the uncertainty around our probability estimate. We were unable to do so because appropriate techniques have not been validated and that we would need more individual level, more granular data to compute it.     
+
+**Next steps**
+
+We could try to model state as a random effect variable and use a multilevel model. This way we could account for randomness in which state the sample unit comes from. Moreover, we could look for variables that could affect our outcome variable to decrease the amount of confounding and enhance the prediction ability of our model. Furthermore, we could fit different models with different combinations of variables and use appropriate techniques to compare models and choose the best one for our data. All these could make our estimate more precise. We could also quantify the uncertainty around our estimated probability by calculating a margin of error. But this is very complicated and could only be calculated with individual-level data for both survey and census data, which was complicated for our analysis. 
+
+\newpage
+
+# References
+
